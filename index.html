@@ -35,13 +35,15 @@ ul{margin:8px 0 0;padding-left:20px}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;max-width:90%;opacity:0;pointer-events:none;transition:opacity .3s;text-align:center}
 #toast.show{opacity:1}
 .hide{display:none}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.barw{height:6px;background:var(--line);border-radius:4px;margin:8px auto 2px;max-width:260px;overflow:hidden}#bar{height:100%;width:0;background:var(--acc2)}#pop{height:20px;font-weight:800;color:var(--acc2)}#pop.go{animation:up 1s ease-out}@keyframes up{0%{opacity:1;transform:translateY(6px)}100%{opacity:0;transform:translateY(-10px)}}#gold{position:fixed;z-index:5;font-size:46px;background:none;border:0;cursor:pointer;animation:bob .8s infinite alternate}@keyframes bob{to{transform:translateY(-10px) scale(1.1)}}.lock{opacity:.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <main>
 <h1>Sleepy Mushroom Farm</h1>
 <p class="sub">Your Mushrooms Keep Growing Even When You Are Away.</p>
+<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn ghost" id="mus">Music: On</button><button class="btn ghost" id="snd">Sound: On</button></div>
 <nav><button id="tFarm" class="on">The Farm</button><button id="tLog">Update Log</button></nav>
 
 <section id="farm">
@@ -49,6 +51,7 @@ ul{margin:8px 0 0;padding-left:20px}
     <div class="big" id="spores">0</div>
     <div class="mute">Spores</div>
     <div class="mute" id="rate">0 Spores Per Second</div>
+    <div class="barw"><div id="bar"></div></div><div class="mute">Spores Arrive Once Every Second</div><div id="pop"></div>
     <button id="shroom" aria-label="Water The Mushroom">🍄</button>
     <div class="mute" id="clickInfo">Each Watering Gives 1 Spore</div>
   </div>
@@ -62,6 +65,7 @@ ul{margin:8px 0 0;padding-left:20px}
   <h2>Moonrise</h2>
   <div class="row"><div><b>Moon Seeds: <span id="seeds">0</span></b><span class="mute" id="moonDesc"></span></div><button id="moonBtn">Moonrise</button></div>
 
+  <h2>Achievements</h2><div id="ach"></div>
   <p style="text-align:center;margin-top:20px"><button class="btn ghost" id="reset">Reset Game</button></p>
 </section>
 
@@ -71,6 +75,7 @@ ul{margin:8px 0 0;padding-left:20px}
 
 <script>
 const LOG=[
+ {v:"Version 1.1.0",name:"UPDATE",date:"October 22, 2026",items:["Spores Now Arrive Once Every Second Instead Of Constantly","Added Music And Sound Effects (Toggle Them At The Top)","Added Achievements","Added Golden Mushrooms That Appear Randomly","Added Two New Helpers: Crystal Cavern And Star Garden"]},
  {v:"Version 1.0.0",name:"RELEASE",date:"October 22, 2026",items:["The Game Is Out!","Six Helpers To Grow Your Farm","Better Watering Can Upgrades","Moonrise Resets With Moon Seed Bonuses","Offline Progress While You Are Away"]}
 ];
 const HELPERS=[
@@ -79,10 +84,12 @@ const HELPERS=[
  {n:"Glow Cave",e:"🕯️",c:1100,r:8},
  {n:"Fairy Ring",e:"🧚",c:12000,r:47},
  {n:"Moon Grove",e:"🌙",c:130000,r:260},
- {n:"Ancient Forest",e:"🌳",c:1400000,r:1400}
+ {n:"Ancient Forest",e:"🌳",c:1400000,r:1400},
+ {n:"Crystal Cavern",e:"💎",c:20000000,r:7800},
+ {n:"Star Garden",e:"⭐",c:330000000,r:44000}
 ];
 const KEY="sleepyMushroomFarmV1";
-let S={spores:0,total:0,own:HELPERS.map(()=>0),can:0,seeds:0,last:Date.now()};
+const fresh=()=>({spores:0,total:0,own:HELPERS.map(()=>0),can:0,seeds:0,last:Date.now(),ach:{},clicks:0,gold:0});let S=fresh();
 const $=id=>document.getElementById(id);
 const suf=["","K","M","B","T","Qa","Qi"];
 function fmt(n){if(n<1000)return n<10&&n%1?n.toFixed(1):Math.floor(n).toString();let i=0;while(n>=1000&&i<suf.length-1){n/=1000;i++}return n.toFixed(2)+suf[i]}
@@ -100,11 +107,11 @@ function load(){try{const d=localStorage.getItem(KEY);if(d){const o=JSON.parse(d
 const shop=$("shop");
 HELPERS.forEach((h,i)=>{const d=document.createElement("div");d.className="row";
  d.innerHTML='<div><b>'+h.e+' '+h.n+' (<span id="o'+i+'">0</span>)</b><span class="mute" id="d'+i+'"></span></div><button id="b'+i+'"></button>';
- shop.appendChild(d);$("b"+i).onclick=()=>{const c=cost(i);if(S.spores>=c){S.spores-=c;S.own[i]++;ui()}}});
-$("shroom").onclick=()=>{const g=clickPow();S.spores+=g;S.total+=g;ui()};
-$("canBtn").onclick=()=>{const c=canCost();if(S.spores>=c){S.spores-=c;S.can++;ui()}};
-$("moonBtn").onclick=()=>{const g=moonGain();if(g<1)return;if(confirm("Start A Moonrise? You Will Lose Your Spores And Helpers But Gain "+g+" Moon Seeds.")){S.seeds+=g;S.spores=0;S.total=0;S.own=HELPERS.map(()=>0);S.can=0;toast("Moonrise Complete! You Now Have "+S.seeds+" Moon Seeds.");ui();save()}};
-$("reset").onclick=()=>{if(confirm("Reset Everything? This Cannot Be Undone.")){S={spores:0,total:0,own:HELPERS.map(()=>0),can:0,seeds:0,last:Date.now()};save();ui()}};
+ shop.appendChild(d);$("b"+i).onclick=()=>{const c=cost(i);if(S.spores>=c){S.spores-=c;S.own[i]++;sfx.buy();ui()}}});
+$("shroom").onclick=()=>{const g=clickPow();S.spores+=g;S.total+=g;S.clicks++;sfx.click();ui()};
+$("canBtn").onclick=()=>{const c=canCost();if(S.spores>=c){S.spores-=c;S.can++;sfx.buy();ui()}};
+$("moonBtn").onclick=()=>{const g=moonGain();if(g<1)return;if(confirm("Start A Moonrise? You Will Lose Your Spores And Helpers But Gain "+g+" Moon Seeds.")){sfx.moon();S.seeds+=g;S.spores=0;S.total=0;S.own=HELPERS.map(()=>0);S.can=0;toast("Moonrise Complete! You Now Have "+S.seeds+" Moon Seeds.");ui();save()}};
+$("reset").onclick=()=>{if(confirm("Reset Everything? This Cannot Be Undone.")){S=fresh();save();renderAch();ui()}};
 
 function ui(){
  $("spores").textContent=fmt(S.spores);
@@ -119,7 +126,10 @@ function ui(){
  $("moonBtn").disabled=g<1;
 }
 let prev=performance.now();
-setInterval(()=>{const n=performance.now(),dt=(n-prev)/1000;prev=n;const g=rate()*dt;S.spores+=g;S.total+=g;ui()},100);
+let acc=0;
+setInterval(()=>{const n=performance.now();acc+=n-prev;prev=n;
+ while(acc>=1000){acc-=1000;const g=rate();if(g>0){S.spores+=g;S.total+=g;sfx.tick();pop(g)}}
+ $("bar").style.width=(acc/10)+"%";checkAch();ui()},100);
 setInterval(save,5000);
 document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
 
@@ -127,7 +137,39 @@ function showTab(t){$("farm").classList.toggle("hide",t!=="farm");$("log").class
 $("tFarm").onclick=()=>showTab("farm");$("tLog").onclick=()=>showTab("log");
 $("log").innerHTML='<h2>Update Log</h2>'+LOG.map(l=>'<div class="entry"><span class="tag">'+l.name+'</span> <b>'+l.v+'</b><div class="mute">'+l.date+'</div><ul>'+l.items.map(x=>'<li>'+x+'</li>').join("")+'</ul></div>').join("");
 
-load();ui();
+function pop(g){const e=$("pop");e.textContent="+"+fmt(g);e.classList.remove("go");void e.offsetWidth;e.classList.add("go")}
+let AC=null,sndOn=true,musOn=true,musT=null,step=0;
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==="suspended")AC.resume();return AC}
+function beep(f,d,type,v,t0){const a=ac();if(!a)return;const t=a.currentTime+(t0||0),o=a.createOscillator(),g=a.createGain();o.type=type||"sine";o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v||0.1,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+0.05)}
+const sfx={
+ click(){if(sndOn)beep(520+Math.random()*120,0.12,"triangle",0.12)},
+ tick(){if(sndOn&&!document.hidden)beep(880,0.1,"sine",0.05)},
+ buy(){if(sndOn){beep(440,0.1,"square",0.05);beep(660,0.15,"square",0.05,0.08)}},
+ gold(){if(sndOn)[784,988,1175,1568].forEach((f,i)=>beep(f,0.25,"triangle",0.1,i*0.08))},
+ ach(){if(sndOn)[523,659,784].forEach((f,i)=>beep(f,0.3,"sine",0.1,i*0.12))},
+ moon(){if(sndOn)[392,330,262,196].forEach((f,i)=>beep(f,0.4,"sine",0.1,i*0.15))}
+};
+const PENT=[262,294,330,392,440,523],MEL=[0,2,4,3,2,1,0,2,4,5,4,2,3,1,0,-1],BASS=[131,98,110,98];
+function playStep(){if(document.hidden||!AC||AC.state!=="running")return;const n=MEL[step%MEL.length];if(n>=0)beep(PENT[n],0.7,"sine",0.05);if(step%4===0)beep(BASS[(step>>2)%4],1.6,"triangle",0.06);step++}
+$("mus").onclick=()=>{musOn=!musOn;$("mus").textContent="Music: "+(musOn?"On":"Off");clearInterval(musT);if(musOn){ac();musT=setInterval(playStep,500)}};
+$("snd").onclick=()=>{sndOn=!sndOn;$("snd").textContent="Sound: "+(sndOn?"On":"Off")};
+const ACH=[
+ {id:"a1",n:"First Spore",d:"Earn Your First Spore",f:()=>S.total>=1},
+ {id:"a2",n:"Busy Hands",d:"Water The Mushroom 100 Times",f:()=>S.clicks>=100},
+ {id:"a3",n:"Tiny Farmer",d:"Own 10 Helpers",f:()=>S.own.reduce((a,b)=>a+b,0)>=10},
+ {id:"a4",n:"Forest Keeper",d:"Own 50 Helpers",f:()=>S.own.reduce((a,b)=>a+b,0)>=50},
+ {id:"a5",n:"Spore Collector",d:"Earn 100000 Spores In One Run",f:()=>S.total>=1e5},
+ {id:"a6",n:"Lucky Day",d:"Catch A Golden Mushroom",f:()=>S.gold>=1},
+ {id:"a7",n:"First Moonrise",d:"Complete A Moonrise",f:()=>S.seeds>=1}
+];
+function renderAch(){$("ach").innerHTML=ACH.map(a=>{const ok=S.ach[a.id];return '<div class="row'+(ok?'':' lock')+'"><div><b>'+a.n+'</b><span class="mute">'+a.d+'</span></div><span>'+(ok?'🏆':'🔒')+'</span></div>'}).join("")}
+function checkAch(){let ch=false;ACH.forEach(a=>{if(!S.ach[a.id]&&a.f()){S.ach[a.id]=1;ch=true;toast("Achievement Unlocked: "+a.n+"!");sfx.ach()}});if(ch)renderAch()}
+function spawnGold(){const b=document.createElement("button");b.id="gold";b.textContent="🌟";b.setAttribute("aria-label","Golden Mushroom");b.style.left=(10+Math.random()*70)+"vw";b.style.top=(20+Math.random()*55)+"vh";b.onclick=()=>{const g=50+rate()*30;S.spores+=g;S.total+=g;S.gold++;sfx.gold();toast("Golden Mushroom! You Got "+fmt(g)+" Spores.");b.remove();ui()};document.body.appendChild(b);setTimeout(()=>b.remove(),12000)}
+function schedGold(){setTimeout(()=>{if(!document.hidden)spawnGold();schedGold()},45000+Math.random()*45000)}
+schedGold();
+musT=setInterval(playStep,500);
+["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>ac(),{once:true}));
+load();renderAch();ui();
 </script>
 </body>
 </html>
