@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleepy Mushroom Farm</title>
+<style>
+:root{--bg:#f1efe4;--card:#fffdf4;--ink:#2a2a22;--mute:#6d6b5a;--line:#d8d3b8;--acc:#7a3fb0;--acc2:#2f8a57;--glow:#e8dcf5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181a;--card:#1d2326;--ink:#e9ecde;--mute:#98a08f;--line:#2f3a3d;--acc:#b98af0;--acc2:#6fd39a;--glow:#2b2440}}
+:root[data-theme="dark"]{--bg:#14181a;--card:#1d2326;--ink:#e9ecde;--mute:#98a08f;--line:#2f3a3d;--acc:#b98af0;--acc2:#6fd39a;--glow:#2b2440}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;line-height:1.4}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:4px 0 2px}
+.sub{color:var(--mute);margin:0 0 14px;font-size:14px}
+nav{display:flex;gap:8px;margin-bottom:14px}
+nav button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+nav button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.stats{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.big{font-size:34px;font-weight:800;color:var(--acc)}
+.mute{color:var(--mute);font-size:14px}
+#shroom{display:block;margin:12px auto;width:150px;height:150px;border:0;border-radius:50%;background:var(--glow);font-size:78px;cursor:pointer;transition:transform .08s}
+#shroom:active{transform:scale(.92)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.row b{display:block}
+.row button,.btn{padding:8px 12px;border:0;border-radius:9px;background:var(--acc2);color:#fff;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
+.row button:disabled{opacity:.4;cursor:not-allowed}
+.btn.alt{background:var(--acc)}
+.btn.ghost{background:transparent;color:var(--mute);border:1px solid var(--line)}
+h2{font-size:17px;margin:18px 0 4px}
+.entry{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+.tag{display:inline-block;background:var(--acc);color:#fff;border-radius:6px;padding:1px 8px;font-weight:800;font-size:13px}
+ul{margin:8px 0 0;padding-left:20px}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;max-width:90%;opacity:0;pointer-events:none;transition:opacity .3s;text-align:center}
+#toast.show{opacity:1}
+.hide{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<h1>Sleepy Mushroom Farm</h1>
+<p class="sub">Your Mushrooms Keep Growing Even When You Are Away.</p>
+<nav><button id="tFarm" class="on">The Farm</button><button id="tLog">Update Log</button></nav>
+
+<section id="farm">
+  <div class="stats">
+    <div class="big" id="spores">0</div>
+    <div class="mute">Spores</div>
+    <div class="mute" id="rate">0 Spores Per Second</div>
+    <button id="shroom" aria-label="Water The Mushroom">🍄</button>
+    <div class="mute" id="clickInfo">Each Watering Gives 1 Spore</div>
+  </div>
+
+  <h2>Helpers</h2>
+  <div id="shop"></div>
+
+  <h2>Tools</h2>
+  <div class="row"><div><b id="canName">Better Watering Can</b><span class="mute" id="canDesc"></span></div><button id="canBtn"></button></div>
+
+  <h2>Moonrise</h2>
+  <div class="row"><div><b>Moon Seeds: <span id="seeds">0</span></b><span class="mute" id="moonDesc"></span></div><button id="moonBtn">Moonrise</button></div>
+
+  <p style="text-align:center;margin-top:20px"><button class="btn ghost" id="reset">Reset Game</button></p>
+</section>
+
+<section id="log" class="hide"></section>
+</main>
+<div id="toast"></div>
+
+<script>
+const LOG=[
+ {v:"Version 1.0.0",name:"RELEASE",date:"October 22, 2026",items:["The Game Is Out!","Six Helpers To Grow Your Farm","Better Watering Can Upgrades","Moonrise Resets With Moon Seed Bonuses","Offline Progress While You Are Away"]}
+];
+const HELPERS=[
+ {n:"Little Sprout",e:"🌱",c:15,r:0.2},
+ {n:"Mushroom Patch",e:"🍄",c:100,r:1},
+ {n:"Glow Cave",e:"🕯️",c:1100,r:8},
+ {n:"Fairy Ring",e:"🧚",c:12000,r:47},
+ {n:"Moon Grove",e:"🌙",c:130000,r:260},
+ {n:"Ancient Forest",e:"🌳",c:1400000,r:1400}
+];
+const KEY="sleepyMushroomFarmV1";
+let S={spores:0,total:0,own:HELPERS.map(()=>0),can:0,seeds:0,last:Date.now()};
+const $=id=>document.getElementById(id);
+const suf=["","K","M","B","T","Qa","Qi"];
+function fmt(n){if(n<1000)return n<10&&n%1?n.toFixed(1):Math.floor(n).toString();let i=0;while(n>=1000&&i<suf.length-1){n/=1000;i++}return n.toFixed(2)+suf[i]}
+const mult=()=>1+S.seeds*0.1;
+const rate=()=>HELPERS.reduce((a,h,i)=>a+h.r*S.own[i],0)*mult();
+const clickPow=()=>(1+S.can)*mult();
+const cost=(i)=>Math.ceil(HELPERS[i].c*Math.pow(1.15,S.own[i]));
+const canCost=()=>Math.ceil(50*Math.pow(2.2,S.can));
+const moonGain=()=>Math.floor(Math.sqrt(S.total/100000));
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),3500)}
+function save(){S.last=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function load(){try{const d=localStorage.getItem(KEY);if(d){const o=JSON.parse(d);S=Object.assign(S,o);while(S.own.length<HELPERS.length)S.own.push(0);
+ const secs=Math.min((Date.now()-S.last)/1000,8*3600);if(secs>30&&rate()>0){const g=rate()*secs*0.5;S.spores+=g;S.total+=g;toast("Welcome Back! Your Farm Grew "+fmt(g)+" Spores While You Were Away.")}}}catch(e){}}
+
+const shop=$("shop");
+HELPERS.forEach((h,i)=>{const d=document.createElement("div");d.className="row";
+ d.innerHTML='<div><b>'+h.e+' '+h.n+' (<span id="o'+i+'">0</span>)</b><span class="mute" id="d'+i+'"></span></div><button id="b'+i+'"></button>';
+ shop.appendChild(d);$("b"+i).onclick=()=>{const c=cost(i);if(S.spores>=c){S.spores-=c;S.own[i]++;ui()}}});
+$("shroom").onclick=()=>{const g=clickPow();S.spores+=g;S.total+=g;ui()};
+$("canBtn").onclick=()=>{const c=canCost();if(S.spores>=c){S.spores-=c;S.can++;ui()}};
+$("moonBtn").onclick=()=>{const g=moonGain();if(g<1)return;if(confirm("Start A Moonrise? You Will Lose Your Spores And Helpers But Gain "+g+" Moon Seeds.")){S.seeds+=g;S.spores=0;S.total=0;S.own=HELPERS.map(()=>0);S.can=0;toast("Moonrise Complete! You Now Have "+S.seeds+" Moon Seeds.");ui();save()}};
+$("reset").onclick=()=>{if(confirm("Reset Everything? This Cannot Be Undone.")){S={spores:0,total:0,own:HELPERS.map(()=>0),can:0,seeds:0,last:Date.now()};save();ui()}};
+
+function ui(){
+ $("spores").textContent=fmt(S.spores);
+ $("rate").textContent=fmt(rate())+" Spores Per Second";
+ $("clickInfo").textContent="Each Watering Gives "+fmt(clickPow())+" Spores";
+ HELPERS.forEach((h,i)=>{$("o"+i).textContent=S.own[i];$("d"+i).textContent="Makes "+fmt(h.r*mult())+" Spores Per Second";const b=$("b"+i);b.textContent="Buy: "+fmt(cost(i));b.disabled=S.spores<cost(i)});
+ $("canDesc").textContent=" Level "+S.can+" • Adds +1 Spore Per Watering";
+ $("canBtn").textContent="Upgrade: "+fmt(canCost());$("canBtn").disabled=S.spores<canCost();
+ $("seeds").textContent=S.seeds;
+ const g=moonGain();
+ $("moonDesc").textContent=" Each Seed Gives +10% To Everything. Moonrise Now Gives "+g+" Seeds.";
+ $("moonBtn").disabled=g<1;
+}
+let prev=performance.now();
+setInterval(()=>{const n=performance.now(),dt=(n-prev)/1000;prev=n;const g=rate()*dt;S.spores+=g;S.total+=g;ui()},100);
+setInterval(save,5000);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
+
+function showTab(t){$("farm").classList.toggle("hide",t!=="farm");$("log").classList.toggle("hide",t!=="log");$("tFarm").classList.toggle("on",t==="farm");$("tLog").classList.toggle("on",t==="log")}
+$("tFarm").onclick=()=>showTab("farm");$("tLog").onclick=()=>showTab("log");
+$("log").innerHTML='<h2>Update Log</h2>'+LOG.map(l=>'<div class="entry"><span class="tag">'+l.name+'</span> <b>'+l.v+'</b><div class="mute">'+l.date+'</div><ul>'+l.items.map(x=>'<li>'+x+'</li>').join("")+'</ul></div>').join("");
+
+load();ui();
+</script>
+</body>
+</html>
